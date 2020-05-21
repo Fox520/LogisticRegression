@@ -210,13 +210,26 @@ function update_theta(X, Y, theta, lr, lambda)
                 y = Y[i:i, :][1]
                 temp2 += hypothesis(theta, x) - y
                 temp2 *= x[j]
-                temp2 += (lambda/m) * theta[j]
+                temp2 -= (lambda/m) * theta[j]
             end
             theta[j] = theta[j] - lr*(1/m)*temp2
         end
     end
     return theta
 end
-# update_theta(training_x, training_y,zeros(size(training_x)[2]), 0.01, 0.02)
+# hey = update_theta(training_x, training_y,zeros(size(training_x)[2]), 0.3, 10)
+# update_theta(training_x, training_y,hey, 0.3, 10)
 
-
+function train(X, Y, theta, lr, lambda, n_iters)
+    cost_history = zeros(0)
+    for i in 1:n_iters
+        theta = update_theta(X, Y, theta, lr, lambda)
+        # Log the cost
+        println(theta)
+        cost = cost_function(X, Y, theta, lambda)
+        append!(cost_history, cost)
+#         println(cost)
+    end
+#     return theta
+end
+train(training_x, training_y, zeros(size(training_x)[2]), 0, 10, 2)
