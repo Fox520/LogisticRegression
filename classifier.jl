@@ -68,6 +68,8 @@ function map_to_int(arr, T, initial_count=nothing)
     if initial_count == nothing
         count = 1
     else
+        # Works since dataset has "no" as first and not "yes",
+        # not the best way but is suitable for now
         count = initial_count
     end
     for i in unique_list
@@ -142,7 +144,7 @@ for i in 1:size(m)[1]
 end
 
 # Concatenate a vector of 1 to feature matrix to represent bias
-x = hcat(x, ones(Int64, size(x)[1]))
+#x = hcat(x, ones(Int64, size(x)[1]))
 
 # Standardize x
 m_fit = fit(ZScoreTransform, x, dims=2)
@@ -163,5 +165,58 @@ function hypothesis(v_theta, x)
     # Sigmoid
     return 1/(1+exp(-z))
 end
+
+function sum_square_theta(theta)
+    res = 0
+    for i in 1:size(theta)[1]
+        res += theta[i]^2
+    end
+    return res
+end
+
+function cost_function(X, Y, theta, lambda)
+    m = size(X)[1]
+    cross_result = 0 # result of cross-entropy function
+    for i in 1:m
+        y = Y[i]
+        x = X[i, :]
+        cross_result += (1-y)*log(hypothesis(theta, x))
+#         println((1-y)*log(hypothesis(theta, x)))
+    end
+    # regularize
+#     println(cross_result)
+    cross_result += (lambda/2*m)*sum_square_theta(theta)
+#     println(cross_result)
+    return -(1/m)*cross_result
+end
+cost_function(training_x, training_y, zeros(size(training_x)[2]), 0.2)
+
+function update_theta(X, Y, theta, lr, lambda)
+    m = size(X)[1]
+    for j in 1:size(theta)[1]
+        if j == 1
+            temp1 = 0 # summation result when theta index 0
+            for i in 1:m
+                x = X[i, :]
+                y = Y[i:i, :][1]
+                temp1 += hypothesis(theta, x) - y
+                temp1 *= x[1]
+            end
+            theta[1] = theta[1] - lr*(1/m)*temp1
+        else
+            temp2 = 0 # summation result when theta index not 0
+            for i in 1:m
+                x = X[i, :]
+                y = Y[i:i, :][1]
+                temp2 += hypothesis(theta, x) - y
+                temp2 *= x[j]
+                temp2 += (lambda/m) * theta[j]
+            end
+            theta[j] = theta[j] - lr*(1/m)*temp2
+        end
+    end
+    return theta
+end
+# update_theta(training_x, training_y,zeros(size(training_x)[2]), 0.01, 0.02)
 
 
