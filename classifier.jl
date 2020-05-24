@@ -1,3 +1,7 @@
+using Pkg
+Pkg.add("CSV")
+Pkg.add("DataFrames")
+Pkg.add("StatsBase")
 using CSV
 using DataFrames
 using StatsBase  # For standardization
@@ -180,7 +184,7 @@ end
 # Standardize x ZScoreTransform  UnitRangeTransform
 # m_fit = fit(ZScoreTransform, x, dims=2)#, center=false, scale=true)
 m_fit = fit(UnitRangeTransform, x, dims=2)
-x=StatsBase.transform(m_fit, x)
+x = StatsBase.transform(m_fit, x)
 
 # Split into testing and training
 TRAIN_PERCENT = 0.8
