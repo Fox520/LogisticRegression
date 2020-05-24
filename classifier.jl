@@ -15,6 +15,12 @@ loan_vector = Array{String,1}(undef, size(m)[1])
 month_vector = Array{String,1}(undef, size(m)[1])
 duration_vector = Array{Int64,1}(undef, size(m)[1])
 poutcome_vector = Array{String,1}(undef, size(m)[1])
+pdays_vector = Array{Float64,1}(undef, size(m)[1]) #new
+nr_emp_vector = Array{Float64,1}(undef, size(m)[1]) #new
+euribor3m_vector = Array{Float64,1}(undef, size(m)[1]) #new
+conf_idx_vector = Array{Float64,1}(undef, size(m)[1]) #new
+price_idx_vector = Array{Float64,1}(undef, size(m)[1]) #new
+
 job_vector = Array{String,1}(undef, size(m)[1])
 education_vector = Array{String,1}(undef, size(m)[1])
 housing_vector = Array{String,1}(undef, size(m)[1])
@@ -50,6 +56,16 @@ for i in 1:size(m)[1]
             dow_vector[i] = m[i,j]
         elseif j == 21
             y_vector[i] = m[i,j]
+        elseif j == 13
+            pdays_vector[i] = m[i,j]
+        elseif j == 20
+            nr_emp_vector[i] = m[i,j]
+        elseif j == 19
+            euribor3m_vector[i] = m[i,j]
+        elseif j == 18
+            conf_idx_vector[i] = m[i,j]
+        elseif j == 17
+            price_idx_vector[i] = m[i,j]
         end
     end
 end
@@ -90,6 +106,13 @@ cleaned_loan = map_to_int(loan_vector, String)
 cleaned_month = map_to_int(month_vector, String)
 
 cleaned_duration = map_to_int(duration_vector, Int64)
+cleaned_pdays = map_to_int(pdays_vector, Float64) #new
+cleaned_nr_emp = map_to_int(nr_emp_vector, Float64) #new
+cleaned_euribor3m = map_to_int(euribor3m_vector, Float64) #new
+cleaned_conf_idx = map_to_int(conf_idx_vector, Float64) #new
+cleaned_price_idx = map_to_int(price_idx_vector, Float64) #new
+
+
 cleaned_poutcome = map_to_int(poutcome_vector, String)
 cleaned_job = map_to_int(job_vector, String)
 cleaned_education = map_to_int(education_vector, String)
@@ -125,6 +148,17 @@ for i in 1:size(m)[1]
             m[i,j] = cleaned_contact[i]
         elseif j == 10
             m[i,j] = cleaned_dow[i]
+            
+        elseif j == 13
+            m[i,j] = cleaned_pdays[i]
+        elseif j == 20
+            m[i,j] = cleaned_nr_emp[i]
+        elseif j == 19
+            m[i,j] = cleaned_euribor3m[i]
+        elseif j == 18
+            m[i,j] = cleaned_conf_idx[i]
+        elseif j == 17
+            m[i,j] = cleaned_price_idx[i]
         end
     end
 end
@@ -143,12 +177,10 @@ for i in 1:size(m)[1]
     end
 end
 
-# Concatenate a vector of 1 to feature matrix to represent bias
-#x = hcat(x, ones(Int64, size(x)[1]))
-
-# Standardize x
-m_fit = fit(ZScoreTransform, x, dims=2)
-x = StatsBase.transform(m_fit, x)
+# Standardize x ZScoreTransform  UnitRangeTransform
+# m_fit = fit(ZScoreTransform, x, dims=2)#, center=false, scale=true)
+m_fit = fit(UnitRangeTransform, x, dims=2)
+x=StatsBase.transform(m_fit, x)
 
 # Split into testing and training
 TRAIN_PERCENT = 0.8
@@ -161,17 +193,9 @@ training_y = y[1:training_row_length-1, :]
 testing_y = y[training_row_length: size(y)[1], :]
 
 function hypothesis(v_theta, x)
-    z = transpose(v_theta) * x
+    z = (transpose(v_theta) * x)
     # Sigmoid
     return 1/(1+exp(-z))
-end
-
-function sum_square_theta(theta)
-    res = 0
-    for i in 1:size(theta)[1]
-        res += theta[i]^2
-    end
-    return res
 end
 
 function cost_function(X, Y, theta, lambda)
@@ -180,16 +204,14 @@ function cost_function(X, Y, theta, lambda)
     for i in 1:m
         y = Y[i]
         x = X[i, :]
-        cross_result += (1-y)*log(hypothesis(theta, x))
-#         println((1-y)*log(hypothesis(theta, x)))
+        cross_result += y * log(hypothesis(theta, x))
+        cross_result += (1-y)*log(1-hypothesis(theta, x))
     end
     # regularize
-#     println(cross_result)
-    cross_result += (lambda/2*m)*sum_square_theta(theta)
-#     println(cross_result)
+    cross_result += (lambda/2*m)*sum(theta[2: size(theta)[1]].^2)
     return -(1/m)*cross_result
 end
-cost_function(training_x, training_y, zeros(size(training_x)[2]), 0.2)
+cost_function(training_x, training_y, zeros(size(training_x)[2]), 0.3)
 
 function update_theta(X, Y, theta, lr, lambda)
     m = size(X)[1]
@@ -212,24 +234,63 @@ function update_theta(X, Y, theta, lr, lambda)
                 temp2 *= x[j]
                 temp2 -= (lambda/m) * theta[j]
             end
-            theta[j] = theta[j] - lr*(1/m)*temp2
+            theta[j] = theta[j] - lr*(1/m)*temp2 # old - step size
         end
     end
     return theta
 end
-# hey = update_theta(training_x, training_y,zeros(size(training_x)[2]), 0.3, 10)
-# update_theta(training_x, training_y,hey, 0.3, 10)
+w=0.002
+l=0.3
+hey = update_theta(training_x, training_y,zeros(size(training_x)[2]), w, l)
+update_theta(training_x, training_y,hey, w, l)
 
 function train(X, Y, theta, lr, lambda, n_iters)
     cost_history = zeros(0)
     for i in 1:n_iters
-        theta = update_theta(X, Y, theta, lr, lambda)
-        # Log the cost
-        println(theta)
         cost = cost_function(X, Y, theta, lambda)
-        append!(cost_history, cost)
-#         println(cost)
+        theta = update_theta(X, Y, theta, lr, lambda)
+        # Logging purposes
+#         append!(cost_history, cost)
+        if i % 100 == 0
+            println("Cost: $cost Iteration: $i")
+        end
     end
-#     return theta
+    return theta
 end
-train(training_x, training_y, zeros(size(training_x)[2]), 0, 10, 2)
+# trained_theta = train(training_x, training_y, zeros(size(training_x)[2]), 0.001, 0.3, 10)
+
+function test(test_x, test_y, theta)
+    N = size(test_x)[1]
+    accuracy_raw = 0
+    zero_count = 0
+    one_count = 0
+    total_one = 0
+    for i in 1:N
+        y_pred = hypothesis(theta, test_x[i, :])
+        actual = test_y[i]
+        if actual == 0 && y_pred < 0.5
+            accuracy_raw += 1
+            zero_count += 1
+        elseif actual == 1 && y_pred >= 0.5
+            accuracy_raw += 1
+            one_count += 1
+        end
+        if actual == 1
+            total_one += 1
+        end
+    end
+    accuracy = accuracy_raw/N * 100
+    precision = one_count/total_one*100
+    println()
+    println("Accuracy: $accuracy")
+    println("Precision: $precision")
+    println("Recall: $one_count")
+    println()
+    println("Actual: 0 => Predicted: $zero_count")
+    println("Actual: 1 => Predicted: $one_count")
+    
+end
+println("training started")
+trained_theta = train(training_x, training_y, zeros(size(training_x)[2]), 0.002, 0.3, 100)
+
+test(testing_x, testing_y, trained_theta)
