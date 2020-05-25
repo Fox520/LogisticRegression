@@ -215,7 +215,7 @@ function cost_function(X, Y, theta, lambda)
     cross_result += (lambda/2*m)*sum(theta[2: size(theta)[1]].^2)
     return -(1/m)*cross_result
 end
-cost_function(training_x, training_y, zeros(size(training_x)[2]), 0.3)
+#cost_function(training_x, training_y, zeros(size(training_x)[2]), 0.3)
 
 function update_theta(X, Y, theta, lr, lambda)
     m = size(X)[1]
@@ -243,25 +243,22 @@ function update_theta(X, Y, theta, lr, lambda)
     end
     return theta
 end
-w=0.002
-l=0.3
-hey = update_theta(training_x, training_y,zeros(size(training_x)[2]), w, l)
-update_theta(training_x, training_y,hey, w, l)
+#w=0.002
+#l=0.3
+#hey = update_theta(training_x, training_y,zeros(size(training_x)[2]), w, l)
+#update_theta(training_x, training_y,hey, w, l)
 
 function train(X, Y, theta, lr, lambda, n_iters)
-    cost_history = zeros(0)
     for i in 1:n_iters
         cost = cost_function(X, Y, theta, lambda)
         theta = update_theta(X, Y, theta, lr, lambda)
-        # Logging purposes
-#         append!(cost_history, cost)
-        if i % 100 == 0
+        if i % 20 == 0
             println("Cost: $cost Iteration: $i")
         end
     end
     return theta
 end
-# trained_theta = train(training_x, training_y, zeros(size(training_x)[2]), 0.001, 0.3, 10)
+# trained_theta = train(training_x, training_y, zeros(size(training_x)[2]), 0.01, 0.3, 10)
 
 function test(test_x, test_y, theta)
     N = size(test_x)[1]
